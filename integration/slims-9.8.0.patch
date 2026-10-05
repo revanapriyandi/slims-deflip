@@ -34,16 +34,33 @@
  
      if (utility::isMobileBrowser()) {
          require SB . 'js/pdfjs/mobile/index.php';
+@@ -96,7 +103,7 @@
+     utility::dlCount($dbs, $fileID, $memberID, $userID);
+     exit;
+   }
+-} 
++}
+ 
+ /**
+  * Video strema file
 @@ -125,4 +132,4 @@
  Plugins::getInstance()->execute('fstream_oth_before_download', ['data' => array('fileID' => $fileID, 'memberID' => $memberID, 'userID' => $userID, 'biblioID' => $biblioID, 'file_d' => $file_d)]);
  $repository->streamFile($file_loc);
  Plugins::getInstance()->execute('fstream_oth_after_download', ['data' => array('fileID' => $fileID, 'memberID' => $memberID, 'userID' => $userID, 'biblioID' => $biblioID, 'file_d' => $file_d)]);
 -exit();  
 \ No newline at end of file
-+exit();  
++exit();
 --- a/lib/contents/fstream-pdf.inc.php
 +++ b/lib/contents/fstream-pdf.inc.php
-@@ -49,15 +49,15 @@
+@@ -19,6 +19,7 @@
+  */
+ 
+ use SLiMS\Filesystems\Storage;
++use SLiMS\Plugins;
+ 
+ // be sure that this file not accessed directly
+ if (!defined('INDEX_AUTH')) {
+@@ -49,18 +50,21 @@
      if ($repository->isExists($file_loc)) {
          if ($file_d['access_limit']) {
              if (utility::isMemberLogin()) {
@@ -62,7 +79,14 @@
 +                exit;
              }
          }
-         $repository->streamFile($file_loc);
+-        $repository->streamFile($file_loc);
++        Plugins::getInstance()->execute('fstream_pdf_before_stream', ['data' => [
++            'fileID' => $fileID, 'biblioID' => $biblioID, 'file_d' => $file_d,
++        ]]);
++        $repository->streamFile($file_loc, '', true);
+     } else {
+       die('<div class="errorBox">File Not Found!</div>');
+     }
 --- a/lib/detail.inc.php
 +++ b/lib/detail.inc.php
 @@ -143,22 +143,31 @@
@@ -75,10 +99,11 @@
                if (!utility::isMemberLogin()) {
                  $_output .= '<li class="attachment-locked" style="list-style-image: url(images/labels/locked.png)"><a class="font-italic" href="index.php?p=member&destination=' . (\SLiMS\Url::getSlimsFullUri('#attachment')->encode()) . '">'.__('Please login to see this attachment').'</a></li>';
                  continue;
-               // member type access check 
+-              // member type access check 
 -              } else if (utility::isMemberLogin() && !in_array($_SESSION['m_member_type_id'], unserialize($attachment_d['access_limit']))) {
 -                $_output .= '<li class="attachment-locked cursor-pointer" style="list-style-image: url(images/labels/locked.png)">'. __('You have no authorization to download this file.') . '</li>';
 -                continue;
++              // member type access check
 +              } else {
 +                $_allowed_member_types = @unserialize($attachment_d['access_limit'], ['allowed_classes' => false]);
 +                if (!is_array($_allowed_member_types) || !in_array($_SESSION['m_member_type_id'], $_allowed_member_types)) {
@@ -106,17 +131,18 @@
                switch ($attachment_d['placement']) {
 --- a/admin/modules/bibliography/pop_attach.php
 +++ b/admin/modules/bibliography/pop_attach.php
-@@ -21,6 +21,9 @@
+@@ -20,6 +20,10 @@
+ 
  use SLiMS\Filesystems\Storage;
  use SLiMS\Url;
- 
++use Ramsey\Uuid\Uuid;
++
 +// PDF passwords must retain spaces and markup characters during request cleanup.
 +$fileKey = is_string($_POST['fileKey'] ?? null) ? $_POST['fileKey'] : '';
-+
+ 
  /* Biblio file Adding Pop Windows */
  
- // key to authenticate
-@@ -50,6 +53,20 @@
+@@ -50,6 +54,26 @@
    die('<div class="errorBox">'.__('You are not authorized to view this section').'</div>');
  }
  
@@ -124,6 +150,12 @@
 +  if (($_POST['form_name'] ?? null) !== 'attachUploadForm' || !is_string($_POST['csrf_token'] ?? null) || !simbio_form_maker::isTokenValid()) {
 +    http_response_code(422);
 +    die('<div class="errorBox">'.__('Your form has expired. Reload the attachment form and try again.').'</div>');
++  }
++  foreach (['fileTitle', 'fileURL', 'fileDir', 'fileDesc'] as $field) {
++    if (isset($_POST[$field]) && !is_string($_POST[$field])) {
++      http_response_code(422);
++      die('<div class="errorBox">'.__('Enter valid attachment details.').'</div>');
++    }
 +  }
 +  if ((isset($_POST['fileKey']) && !is_string($_POST['fileKey'])) ||
 +      !in_array($_POST['placement'] ?? null, ['link', 'popup', 'embed'], true) ||
@@ -137,7 +169,32 @@
  function cleanUrl($url)
  {
    $Url = Url::parse($url);
-@@ -146,8 +163,8 @@
+@@ -66,11 +90,11 @@
+   }
+ 
+   $port = $Url->getPort() ? ':' . $Url->getPort() : '';
+-  return $Url->getScheme() . '://' . 
++  return $Url->getScheme() . '://' .
+          $hostname .
+-         $port . 
+-         $Url->getPath() . 
+-         ($Url->getQuery() ? '?' . $Url->getQuery() : '') . 
++         $port .
++         $Url->getPath() .
++         ($Url->getQuery() ? '?' . $Url->getQuery() : '') .
+          ($Url->getFragment() ? '#' . $Url->getFragment() : '');
+ }
+ 
+@@ -135,7 +159,7 @@
+       // destroy it if failed
+       if (!empty($repository->getError())) $repository->destroyIfFailed();
+ 
+-    })->as($sub_dir . md5(date('Y-m-d H:i:s')));  // set new name
++    })->as($sub_dir . Uuid::uuid4()->toString());
+ 
+ 
+     if ($file_upload->getUploadStatus()) {
+@@ -146,8 +170,8 @@
          $fdata['file_url'] = $dbs->escape_string($url);
          $fdata['file_dir'] = $dbs->escape_string($file_dir);
          $fdata['file_desc'] = $dbs->escape_string(trim(strip_tags($_POST['fileDesc'])));
@@ -148,7 +205,7 @@
          $fdata['mime_type'] = $sysconf['mimetype'][trim($file_ext, '.')]??'';
          $fdata['input_date'] = date('Y-m-d H:i:s');
          $fdata['last_update'] = $fdata['input_date'];
-@@ -170,8 +187,8 @@
+@@ -170,8 +194,8 @@
        $fdata['file_url'] = $dbs->escape_string($fdata['file_name']);
        $fdata['file_dir'] = 'literal{NULL}';
        $fdata['file_desc'] = $dbs->escape_string(trim(strip_tags($_POST['fileDesc'])));
@@ -159,7 +216,18 @@
        $fdata['mime_type'] = 'text/uri-list';
        $fdata['input_date'] = date('Y-m-d H:i:s');
        $fdata['last_update'] = $fdata['input_date'];
-@@ -215,7 +232,7 @@
+@@ -182,6 +206,10 @@
+   }
+ 
+   // BIBLIO FILE RELATION DATA UPDATE
++  if (!isset($_POST['updateFileID']) && $uploaded_file_id < 1) {
++    http_response_code(422);
++    die('<div class="errorBox">'.__('Select an attachment or enter a valid URL before saving.').'</div>');
++  }
+   // check if biblio_id POST var exists
+   if (isset($_POST['updateBiblioID']) AND !empty($_POST['updateBiblioID'])) {
+     $updateBiblioID = (integer)$_POST['updateBiblioID'];
+@@ -215,11 +243,11 @@
            'file_desc' => $dbs->escape_string(trim(strip_tags($_POST['fileDesc'])))
        );
        if(isset($_POST['fileKey']))
@@ -168,7 +236,12 @@
  
        $update2 = $sql_op->update('files', $file_desc_update, 'file_id='.(integer)$fileID);
  
-@@ -311,14 +328,16 @@
+-      if ($update1) {
++      if ($update1 && $update2) {
+         utility::jsToastr('File Attachment', __('File Attachment data updated!'), 'success');
+         echo '<script type="text/javascript">';
+         echo 'parent.setIframeContent(\'attachIframe\', \''.MWB.'bibliography/iframe_attach.php?biblioID='.$updateBiblioID.'\');';
+@@ -311,14 +339,16 @@
  $form->addTextField('textarea', 'fileURL', __('URL'), $file_attach_d['file_url']??'', 'rows="1" class="form-control"');
  
  // placement
@@ -187,7 +260,7 @@
  // file access
  $acctype_options[] = array('public', __('Public'));
  $acctype_options[] = array('private', __('Private'));
-@@ -348,4 +367,4 @@
+@@ -348,4 +378,4 @@
  /* main content end */
  $content = ob_get_clean();
  // include the page template
@@ -196,8 +269,45 @@
 +require SB.'/admin/'.$sysconf['admin_template']['dir'].'/notemplate_page_tpl.php';
 --- a/admin/modules/reporting/spreadsheet.php
 +++ b/admin/modules/reporting/spreadsheet.php
-@@ -72,7 +72,7 @@
+@@ -29,9 +29,13 @@
+ // require LIB.'composer/vendor/autoload.php';
+ 
+ use PhpOffice\PhpSpreadsheet\Spreadsheet;
++use PhpOffice\PhpSpreadsheet\Cell\DataType;
+ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+ 
+ // start the session
++require LIB.'ip_based_access.inc.php';
++do_checkIP('smc');
++do_checkIP('smc-reporting');
+ require SB.'admin/default/session.inc.php';
+ require SB.'admin/default/session_check.inc.php';
+ // privileges checking
+@@ -63,6 +67,19 @@
+ 	$xlsdata = $_SESSION['xlsdata'];
+ }
+ $spreadsheet = new Spreadsheet();
++if (in_array($_SESSION['tblout'] ?? '', ['DeFlip_Access', 'DeFlip_Access_History'], true)) {
++  header('Cache-Control: private, no-store');
++  // Treat collection and reader values as text; never interpret them as formulas.
++  foreach ($xlsdata as $rowIndex => $row) {
++    foreach ($row as $columnIndex => $value) {
++      $isAccessCount = ($_SESSION['tblout'] ?? '') === 'DeFlip_Access' && $rowIndex > 0 && $columnIndex === 3;
++      $spreadsheet->getActiveSheet()->setCellValueExplicitByColumnAndRow(
++        $columnIndex + 1, $rowIndex + 1, $isAccessCount ? (int) $value : (string) $value,
++        $isAccessCount ? DataType::TYPE_NUMERIC : DataType::TYPE_STRING
++      );
++    }
++  }
++} else {
+ $spreadsheet->getActiveSheet()
+   ->fromArray(
+       $xlsdata,  // The data to set
+@@ -70,9 +87,10 @@
+       'A1'         // Top left coordinate of the worksheet range where
+                    //    we want to set these values (default is A1)
    );
++}
  $writer = new Xlsx($spreadsheet);
  $tblout = $_SESSION['tblout'] ?? 'spreadsheet';
 -header("Content-Type: application/xlsx");
@@ -295,3 +405,76 @@
  
      return ajaxContainer;
  };
+--- a/lib/Filesystems/Stream.php
++++ b/lib/Filesystems/Stream.php
+@@ -17,12 +17,13 @@
+      *
+      * @param string $filePath
+      * @param string $callback
++     * @param bool $private Prevent document responses from being stored in caches.
+      * @return void
+      */
+-    public function streamFile(string $filePath, $callback = '')
++    public function streamFile(string $filePath, $callback = '', bool $private = false)
+     {
+         if (is_callable($callback))
+-        {   
++        {
+             $callback('beforeContent', $filePath);
+         }
+ 
+@@ -31,12 +32,12 @@
+         header('Content-Type: '. $this->filesystem->mimeType($filePath));
+         header('Content-Transfer-Encoding: binary');
+         header('Expires: 0');
+-        header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
+-        header('Pragma: public');
++        header($private ? 'Cache-Control: private, no-store' : 'Cache-Control: must-revalidate, post-check=0, pre-check=0');
++        header($private ? 'Pragma: no-cache' : 'Pragma: public');
+         header('Content-Length: ' . $this->filesystem->fileSize($filePath));
+-        
++
+         $resource = $this->filesystem->readStream($filePath);
+-        
++
+         while (!feof($resource)) {
+             echo fread($resource, 8192);
+ 
+@@ -45,7 +46,7 @@
+         }
+ 
+         if (is_callable($callback))
+-        {   
++        {
+             $callback('afterContent', $filePath);
+         }
+ 
+@@ -64,9 +65,9 @@
+         header("Content-Description: File Transfer");
+         header('Content-Disposition: attachment; filename="'.basename($filePath).'"');
+         header('Content-Type: '.$this->filesystem->mimeType($filePath));
+-        
++
+         $resource = $this->filesystem->readStream($filePath);
+-        
++
+         while (!feof($resource)) {
+             echo fread($resource, 8192);
+ 
+--- a/repository/.htaccess
++++ b/repository/.htaccess
+@@ -1,4 +1,14 @@
+ DirectoryIndex index.html
++# PDFs must pass attachment/member/guest checks through the SLiMS stream endpoint.
++<FilesMatch "(?i:\.pdf)$">
++    <IfModule mod_authz_core.c>
++        Require all denied
++    </IfModule>
++    <IfModule !mod_authz_core.c>
++        Order allow,deny
++        Deny from all
++    </IfModule>
++</FilesMatch>
+ # Turn off PHP
+ # only for DSO as PHP Handler
+ # https://docs.cpanel.net/ea4/php/php-handlers/#dso

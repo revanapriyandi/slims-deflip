@@ -4,32 +4,42 @@
     {
       "path": "lib/contents/fstream.inc.php",
       "baseline_sha256": "7d9b06bf8d27c373d5af13e22d839a03d4eb5ab90437bdc416eb8902450beca9",
-      "updated_sha256": "edb268aedc6cdede9b88605ecd251488aebeb26005b85cb952963b529f512f72"
+      "updated_sha256": "18959b04e952d38a5e3aa353253e23a7451d11fc80c03b27c4bfd1ab7d3f40d6"
     },
     {
       "path": "lib/contents/fstream-pdf.inc.php",
       "baseline_sha256": "4d4936d243f49ddb1b5745ff19f07cdee6379ed8892713aecb4ec2eaa53482f8",
-      "updated_sha256": "f786e6c20b334bad4333ad4f6139f70b5ab8fe1a75ebd99809666e1fee5a9401"
+      "updated_sha256": "c1ac0c9e7ff4e2af3cf749e022acbe386c968839242153c3f92791cc6c531031"
     },
     {
       "path": "lib/detail.inc.php",
       "baseline_sha256": "faf7dd76a61cc4a5b1374ebe1c1a2b7f3217e0575ce7ef21b04f03baed0ee894",
-      "updated_sha256": "43396cbb5212adf92cea8534b33dd6fb847f383098ce261994b4db70bfdcdcb2"
+      "updated_sha256": "360bc6400b69936414d0b242d31c64a4cf1453ef70b5b0d9b3930e348724e141"
     },
     {
       "path": "admin/modules/bibliography/pop_attach.php",
       "baseline_sha256": "9145f4089cea0f8767e5484ee089598dd1d7d09488a728f81069548103f95429",
-      "updated_sha256": "a961bece77c9813d0dde9ce80ea9273ed0e1c62500d27de906a508d5d355dee4"
+      "updated_sha256": "e488fdd2bee0a158e9607bfacb0daba5988c878e976281d5267959decc1ab25e"
     },
     {
       "path": "admin/modules/reporting/spreadsheet.php",
       "baseline_sha256": "40d99e4e4aecbf8e71655825dcc44d2cac1981e3ea4a4049ad89fb05ec7802bc",
-      "updated_sha256": "34b5972a902dbf851df3eab63e2ef93394d05372ef099b65d931db9d30c10b91"
+      "updated_sha256": "50f47adfecbbae28012842c559790fd29dfdf78f40254b48cb9c60a1e78ac0b2"
     },
     {
       "path": "js/updater.js",
       "baseline_sha256": "09211e369ad6e0a7f625e72808ce80b91364cf49e1914fab629b3351644d927d",
       "updated_sha256": "5cd1341c52185c0267d1a3f0c2a019a721eba1c1261c50b73fb6a3ba8a72f206"
+    },
+    {
+      "path": "lib/Filesystems/Stream.php",
+      "baseline_sha256": "2a8deae057053710bc3dc785572ca02513c73748b5504f9075ef34ce5f70d4f3",
+      "updated_sha256": "872f4e8f6e1a0e923d469728eaa1669941db389fca39806ac6fc410c3e7a7730"
+    },
+    {
+      "path": "repository/.htaccess",
+      "baseline_sha256": "5e1e3cfabf3c4351e9e07e53ed60d0bd71da8c850a9024288933a359511ca5d3",
+      "updated_sha256": "f7dd7d5517a8480a87f81d27440a033da0fbfe417b0df119b7c145552b59f3b5"
     }
   ]
 }

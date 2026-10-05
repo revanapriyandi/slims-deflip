@@ -103,7 +103,7 @@ if ($file_d['mime_type'] == 'application/pdf') {
     utility::dlCount($dbs, $fileID, $memberID, $userID);
     exit;
   }
-} 
+}
 
 /**
  * Video strema file
@@ -132,4 +132,4 @@ if (preg_match('@(image)/.+@i', $file_d['mime_type'])) {
 Plugins::getInstance()->execute('fstream_oth_before_download', ['data' => array('fileID' => $fileID, 'memberID' => $memberID, 'userID' => $userID, 'biblioID' => $biblioID, 'file_d' => $file_d)]);
 $repository->streamFile($file_loc);
 Plugins::getInstance()->execute('fstream_oth_after_download', ['data' => array('fileID' => $fileID, 'memberID' => $memberID, 'userID' => $userID, 'biblioID' => $biblioID, 'file_d' => $file_d)]);
-exit();  
+exit();

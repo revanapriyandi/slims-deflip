@@ -20,6 +20,7 @@
 
 use SLiMS\Filesystems\Storage;
 use SLiMS\Url;
+use Ramsey\Uuid\Uuid;
 
 // PDF passwords must retain spaces and markup characters during request cleanup.
 $fileKey = is_string($_POST['fileKey'] ?? null) ? $_POST['fileKey'] : '';
@@ -58,6 +59,12 @@ if (isset($_POST['upload'])) {
     http_response_code(422);
     die('<div class="errorBox">'.__('Your form has expired. Reload the attachment form and try again.').'</div>');
   }
+  foreach (['fileTitle', 'fileURL', 'fileDir', 'fileDesc'] as $field) {
+    if (isset($_POST[$field]) && !is_string($_POST[$field])) {
+      http_response_code(422);
+      die('<div class="errorBox">'.__('Enter valid attachment details.').'</div>');
+    }
+  }
   if ((isset($_POST['fileKey']) && !is_string($_POST['fileKey'])) ||
       !in_array($_POST['placement'] ?? null, ['link', 'popup', 'embed'], true) ||
       !in_array($_POST['accessType'] ?? null, ['public', 'private'], true) ||
@@ -83,11 +90,11 @@ function cleanUrl($url)
   }
 
   $port = $Url->getPort() ? ':' . $Url->getPort() : '';
-  return $Url->getScheme() . '://' . 
+  return $Url->getScheme() . '://' .
          $hostname .
-         $port . 
-         $Url->getPath() . 
-         ($Url->getQuery() ? '?' . $Url->getQuery() : '') . 
+         $port .
+         $Url->getPath() .
+         ($Url->getQuery() ? '?' . $Url->getQuery() : '') .
          ($Url->getFragment() ? '#' . $Url->getFragment() : '');
 }
 
@@ -152,7 +159,7 @@ if (isset($_POST['upload']) AND trim(strip_tags($_POST['fileTitle'])) != '') {
       // destroy it if failed
       if (!empty($repository->getError())) $repository->destroyIfFailed();
 
-    })->as($sub_dir . md5(date('Y-m-d H:i:s')));  // set new name
+    })->as($sub_dir . Uuid::uuid4()->toString());
 
 
     if ($file_upload->getUploadStatus()) {
@@ -199,6 +206,10 @@ if (isset($_POST['upload']) AND trim(strip_tags($_POST['fileTitle'])) != '') {
   }
 
   // BIBLIO FILE RELATION DATA UPDATE
+  if (!isset($_POST['updateFileID']) && $uploaded_file_id < 1) {
+    http_response_code(422);
+    die('<div class="errorBox">'.__('Select an attachment or enter a valid URL before saving.').'</div>');
+  }
   // check if biblio_id POST var exists
   if (isset($_POST['updateBiblioID']) AND !empty($_POST['updateBiblioID'])) {
     $updateBiblioID = (integer)$_POST['updateBiblioID'];
@@ -236,7 +247,7 @@ if (isset($_POST['upload']) AND trim(strip_tags($_POST['fileTitle'])) != '') {
 
       $update2 = $sql_op->update('files', $file_desc_update, 'file_id='.(integer)$fileID);
 
-      if ($update1) {
+      if ($update1 && $update2) {
         utility::jsToastr('File Attachment', __('File Attachment data updated!'), 'success');
         echo '<script type="text/javascript">';
         echo 'parent.setIframeContent(\'attachIframe\', \''.MWB.'bibliography/iframe_attach.php?biblioID='.$updateBiblioID.'\');';

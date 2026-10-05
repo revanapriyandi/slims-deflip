@@ -148,7 +148,7 @@ class detail
               if (!utility::isMemberLogin()) {
                 $_output .= '<li class="attachment-locked" style="list-style-image: url(images/labels/locked.png)"><a class="font-italic" href="index.php?p=member&destination=' . (\SLiMS\Url::getSlimsFullUri('#attachment')->encode()) . '">'.__('Please login to see this attachment').'</a></li>';
                 continue;
-              // member type access check 
+              // member type access check
               } else {
                 $_allowed_member_types = @unserialize($attachment_d['access_limit'], ['allowed_classes' => false]);
                 if (!is_array($_allowed_member_types) || !in_array($_SESSION['m_member_type_id'], $_allowed_member_types)) {

@@ -29,9 +29,13 @@ require_once __DIR__ . '/../../../sysconfig.inc.php';
 // require LIB.'composer/vendor/autoload.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 // start the session
+require LIB.'ip_based_access.inc.php';
+do_checkIP('smc');
+do_checkIP('smc-reporting');
 require SB.'admin/default/session.inc.php';
 require SB.'admin/default/session_check.inc.php';
 // privileges checking
@@ -63,6 +67,19 @@ else if (isset($_SESSION['xlsdata'])) {
 	$xlsdata = $_SESSION['xlsdata'];
 }
 $spreadsheet = new Spreadsheet();
+if (in_array($_SESSION['tblout'] ?? '', ['DeFlip_Access', 'DeFlip_Access_History'], true)) {
+  header('Cache-Control: private, no-store');
+  // Treat collection and reader values as text; never interpret them as formulas.
+  foreach ($xlsdata as $rowIndex => $row) {
+    foreach ($row as $columnIndex => $value) {
+      $isAccessCount = ($_SESSION['tblout'] ?? '') === 'DeFlip_Access' && $rowIndex > 0 && $columnIndex === 3;
+      $spreadsheet->getActiveSheet()->setCellValueExplicitByColumnAndRow(
+        $columnIndex + 1, $rowIndex + 1, $isAccessCount ? (int) $value : (string) $value,
+        $isAccessCount ? DataType::TYPE_NUMERIC : DataType::TYPE_STRING
+      );
+    }
+  }
+} else {
 $spreadsheet->getActiveSheet()
   ->fromArray(
       $xlsdata,  // The data to set
@@ -70,6 +87,7 @@ $spreadsheet->getActiveSheet()
       'A1'         // Top left coordinate of the worksheet range where
                    //    we want to set these values (default is A1)
   );
+}
 $writer = new Xlsx($spreadsheet);
 $tblout = $_SESSION['tblout'] ?? 'spreadsheet';
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

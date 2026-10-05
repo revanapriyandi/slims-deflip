@@ -7,6 +7,7 @@ use DateTimeImmutable;
 final class AccessReport
 {
     public const DEFAULT_PAGE_SIZE = 20;
+    public const MIN_PAGE_SIZE = 1;
     public const MAX_PAGE_SIZE = 200;
     private array $filters;
 
@@ -19,7 +20,7 @@ final class AccessReport
         $this->filters['startDate'] = $this->filters['startDate'] ?: '2000-01-01';
         $this->filters['untilDate'] = $this->filters['untilDate'] ?: date('Y-m-d');
         $pageSize = isset($input['recsEachPage']) && is_scalar($input['recsEachPage']) ? (int) $input['recsEachPage'] : self::DEFAULT_PAGE_SIZE;
-        $this->filters['recsEachPage'] = $pageSize >= self::DEFAULT_PAGE_SIZE && $pageSize <= self::MAX_PAGE_SIZE ? $pageSize : self::DEFAULT_PAGE_SIZE;
+        $this->filters['recsEachPage'] = $pageSize >= self::MIN_PAGE_SIZE && $pageSize <= self::MAX_PAGE_SIZE ? $pageSize : self::DEFAULT_PAGE_SIZE;
     }
 
     public function value(string $field)

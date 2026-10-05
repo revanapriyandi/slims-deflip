@@ -59,4 +59,9 @@ final class GuestAccess
     {
         return isset($_SESSION['guestReadEbook']['id']) && (int) $_SESSION['guestReadEbook']['id'] > 0;
     }
+
+    public static function needsRegistration(bool $required): bool
+    {
+        return $required && !\utility::isMemberLogin() && !self::hasIdentity();
+    }
 }

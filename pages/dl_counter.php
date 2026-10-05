@@ -21,6 +21,8 @@ require SIMBIO . 'simbio_GUI/form_maker/simbio_form_element.inc.php';
 require SIMBIO . 'simbio_DB/datagrid/simbio_dbgrid.inc.php';
 require MDLBS . 'reporting/report_dbgrid.inc.php';
 require_once __DIR__ . '/../helper.php';
+require_once __DIR__ . '/../src/ReportGrid.php';
+header('Cache-Control: private, no-store');
 
 $report = new AccessReport($_GET);
 if (isset($_GET['detailList'])) {
@@ -45,7 +47,7 @@ if ($errors) {
     echo '<div class="alert alert-danger" role="alert">' . dflipEscape($errors[0]) . '</div>';
     echo '<script>parent.$("#pagingBox").empty();</script>';
 } else {
-    $reportgrid = new report_datagrid();
+    $reportgrid = new \DeFlip\ReportGrid();
     $reportgrid->table_attr = 'class="s-table table table-sm table-bordered"';
     $reportgrid->column_width = [0 => '54%', 1 => '14%', 2 => '10%', 3 => '8%', 4 => '14%'];
     $columns = [
@@ -71,5 +73,8 @@ if ($errors) {
     $_SESSION['xlsquery'] = 'SELECT ' . implode(', ', array_slice($columns, 0, 4)) . ' FROM ' . AccessReport::tables() . ' WHERE ' . $criteria . ' GROUP BY fr.file_id ORDER BY MIN(b.title) ASC, fr.file_id ASC';
     $_SESSION['tblout'] = 'DeFlip_Access';
 }
+$reportContent = ob_get_clean();
+ob_start();
+require __DIR__ . '/../views/report-print-layout.php';
 $content = '<div class="deflip-report-results deflip-report-summary">' . ob_get_clean() . '</div>';
 require SB . '/admin/' . $sysconf['admin_template']['dir'] . '/printed_page_tpl.php';

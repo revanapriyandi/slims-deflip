@@ -19,6 +19,7 @@
  */
 
 use SLiMS\Filesystems\Storage;
+use SLiMS\Plugins;
 
 // be sure that this file not accessed directly
 if (!defined('INDEX_AUTH')) {
@@ -60,7 +61,10 @@ if ($file_q->num_rows > 0) {
                 exit;
             }
         }
-        $repository->streamFile($file_loc);
+        Plugins::getInstance()->execute('fstream_pdf_before_stream', ['data' => [
+            'fileID' => $fileID, 'biblioID' => $biblioID, 'file_d' => $file_d,
+        ]]);
+        $repository->streamFile($file_loc, '', true);
     } else {
       die('<div class="errorBox">File Not Found!</div>');
     }

@@ -3,7 +3,7 @@
  * Plugin Name: DearFlip
  * Plugin URI: -
  * Description: PDF flipbook, reader registration and access reports
- * Version: 1.1.0
+ * Version: 1.1.1
  * Author: Heru Subekti
  * Author URI: https://www.facebook.com/heroe.soebekti
  * Plugin Packager: Drajat Hasan & Arif Syamsudin
@@ -17,6 +17,17 @@ $plugin->registerMenu('system', 'DeFlip Settings', __DIR__ . '/pages/dflipConfig
 
 // Reporting Menu
 $plugin->registerMenu('reporting', 'DeFlip Access Report', __DIR__ . '/pages/dl_counter.php');
+
+$plugin->register('fstream_pdf_before_stream', function ($data) {
+    require_once __DIR__ . '/helper.php';
+    if (\DeFlip\GuestAccess::needsRegistration(\DeFlip\Settings::get()['guestForm'])) {
+        http_response_code(403);
+        header('Cache-Control: no-store');
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo __('Complete the reader registration form before opening this document.');
+        exit;
+    }
+});
 
 // Hook for force SLiMS PDF Viewer to use DearFlip
 $plugin->register('fstream_pdf_before_download', function($data){
@@ -41,13 +52,13 @@ $plugin->register('fstream_pdf_before_download', function($data){
         unset($_SESSION['guestReadEbook']);
         $_SESSION['memberReadBook'] = [
             'books' => [
-                ($_GET['fid']??0) => ['startread' => date('Y-m-d H:i:s')]
+                $fileID => ['startread' => date('Y-m-d H:i:s')]
             ]
         ];
     }
 
     // Guest checking
-    $guest = $meta['guestForm'] && !\utility::isMemberLogin() && !\DeFlip\GuestAccess::hasIdentity();
+    $guest = \DeFlip\GuestAccess::needsRegistration($meta['guestForm']);
 
     if ($guest)
     {

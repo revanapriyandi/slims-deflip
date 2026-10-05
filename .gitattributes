@@ -1,0 +1,3 @@
+integration/files/** -text whitespace=trailing-space,space-before-tab,cr-at-eol
+integration/*.patch text eol=lf whitespace=-trailing-space,-space-before-tab
+integration/*manifest.json text eol=lf

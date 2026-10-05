@@ -16,6 +16,8 @@ HOST_FILES = {
     "admin/modules/bibliography/pop_attach.php": "original-pop_attach.php",
     "admin/modules/reporting/spreadsheet.php": "original-spreadsheet.php",
     "js/updater.js": "original-updater.js",
+    "lib/Filesystems/Stream.php": "original-Stream.php",
+    "repository/.htaccess": "original-repository.htaccess",
 }
 PLUGIN_DIRECTORIES = ("assets", "migration", "pages", "src", "viewer", "views")
 PLUGIN_FILES = ("dflip.plugin.php", "helper.php", "README.md", "INSTALL.md", "LICENSE", "THIRD_PARTY.md")
@@ -61,8 +63,8 @@ def build(baseline: Path, output: Path) -> Path:
         host_manifest.append({"path": relative, "baseline_sha256": sha256(before), "updated_sha256": sha256(after)})
         payload[f"integration/files/{relative}"] = after
         changes = difflib.unified_diff(
-            before.decode("utf-8-sig").splitlines(keepends=True),
-            after.decode("utf-8-sig").splitlines(keepends=True),
+            before.decode("utf-8-sig").replace("\r\n", "\n").splitlines(keepends=True),
+            after.decode("utf-8-sig").replace("\r\n", "\n").splitlines(keepends=True),
             fromfile=f"a/{relative}", tofile=f"b/{relative}", lineterm="\n",
         )
         for line in changes:

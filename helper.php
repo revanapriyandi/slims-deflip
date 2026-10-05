@@ -44,7 +44,9 @@ if (!function_exists('dflipReportEscapeCell')) {
 if (!function_exists('dflipReportDetailLink')) {
     function dflipReportDetailLink($database, array $row): string
     {
-        $url = getCurrentUrl(['detailList' => 'yes', 'fid' => (int) $row[4]]);
+        global $report;
+        $filters = $report instanceof \DeFlip\AccessReport ? $report->query() : [];
+        $url = getCurrentUrl(array_merge($filters, ['detailList' => 'yes', 'fid' => (int) $row[4]]));
         return '<a class="s-btn btn btn-default notAJAX" href="' . dflipEscape($url) . '" onclick="top.$(\'#mainContent\').simbioAJAX(this.href); return false;">' . __('View history') . '</a>';
     }
 }
