@@ -1,0 +1,12 @@
+.env
+.env.*
+*.log
+*.sql
+*.bak
+*.zip
+*.sha256
+__pycache__/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
