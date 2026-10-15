@@ -3,7 +3,7 @@
  * Plugin Name: DearFlip
  * Plugin URI: -
  * Description: PDF flipbook, reader registration and access reports
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: Heru Subekti
  * Author URI: https://www.facebook.com/heroe.soebekti
  * Plugin Packager: Drajat Hasan & Arif Syamsudin
@@ -18,15 +18,29 @@ $plugin->registerMenu('system', 'DeFlip Settings', __DIR__ . '/pages/dflipConfig
 // Reporting Menu
 $plugin->registerMenu('reporting', 'DeFlip Access Report', __DIR__ . '/pages/dl_counter.php');
 
-$plugin->register('fstream_pdf_before_stream', function ($data) {
-    require_once __DIR__ . '/helper.php';
-    if (\DeFlip\GuestAccess::needsRegistration(\DeFlip\Settings::get()['guestForm'])) {
-        http_response_code(403);
+// Runs before SLiMS loads lib/contents/*, so stock core files need no changes.
+$plugin->register(\SLiMS\Plugins::CONTENT_BEFORE_LOAD, function () {
+    if (!isset($_GET['p'])) return;
+    $page = strtolower(\SLiMS\Opac::filterPath(''));
+
+    // Stock fstream returns any session value named by POST init; only allow PDF loader keys.
+    if ($page === 'fstream' && isset($_POST['init'])) {
+        $loader = $_POST['init'];
+        if (!is_string($loader) || !\Ramsey\Uuid\Uuid::isValid($loader) || !is_string($_SESSION[$loader] ?? null)) {
+            http_response_code(400);
+            exit;
+        }
         header('Cache-Control: no-store');
-        header('Content-Type: text/plain; charset=UTF-8');
-        echo __('Complete the reader registration form before opening this document.');
+        echo base64_encode($_SESSION[$loader] . $loader);
         exit;
     }
+
+    if ($page !== 'fstream-pdf') return;
+    require_once __DIR__ . '/helper.php';
+    \DeFlip\GuestAccess::guardPdfStream(
+        isset($_GET['fid']) ? (int) $_GET['fid'] : 0,
+        isset($_GET['bid']) ? (int) $_GET['bid'] : 0
+    );
 });
 
 // Hook for force SLiMS PDF Viewer to use DearFlip
@@ -38,6 +52,11 @@ $plugin->register('fstream_pdf_before_download', function($data){
     $userID = $data['userID'];
     $file_d = $data['file_d'];
     $loaderInit = $data['loader_init'] ?? '';
+    if ($loaderInit === '') {
+        // Stock SLiMS does not pass its loader key to this hook; register our own the same way.
+        $loaderInit = \Ramsey\Uuid\Uuid::uuid4()->toString();
+        $_SESSION[$loaderInit] = base64_encode($file_d['file_key'] ?? '');
+    }
     // Set global file location url
     $file_loc_url = SWB . 'index.php?p=fstream-pdf&fid=' . $fileID . '&bid=' . $biblioID;
 

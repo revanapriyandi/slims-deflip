@@ -30,7 +30,8 @@ final class ReportGrid extends \report_datagrid
                     $output = parent::createDataGrid($database, $tables, $pageSize, $editable);
                 }
             }
-            return $output;
+            // Point the host export button at the plugin's own XLSX export.
+            return str_replace('href="' . MWB . 'reporting/spreadsheet.php"', 'href="' . dflipEscape(getCurrentUrl(['export' => 'xlsx'])) . '"', $output);
         } finally {
             $_GET = $originalQuery;
         }

@@ -24,6 +24,40 @@ require_once __DIR__ . '/../helper.php';
 require_once __DIR__ . '/../src/ReportGrid.php';
 header('Cache-Control: private, no-store');
 
+// Own XLSX export so stock reporting/spreadsheet.php needs no changes:
+// reader text stays text (no formulas, keeps "+62"/"0" phone prefixes).
+if (($_GET['export'] ?? null) === 'xlsx') {
+    $table = $_SESSION['tblout'] ?? '';
+    if (!in_array($table, ['DeFlip_Access', 'DeFlip_Access_History'], true) || !is_string($_SESSION['xlsquery'] ?? null)) {
+        http_response_code(400);
+        die('<div class="errorBox">' . __('Open the report again before exporting it.') . '</div>');
+    }
+    $result = $dbs->query($_SESSION['xlsquery']);
+    if (!$result) {
+        error_log('DeFlip: unable to export report.');
+        http_response_code(500);
+        die('<div class="errorBox">' . __('Unable to load the report. Please try again.') . '</div>');
+    }
+    $sheet = (new \PhpOffice\PhpSpreadsheet\Spreadsheet())->getActiveSheet();
+    $rows = [array_map(static fn($field) => $field->name, $result->fetch_fields())];
+    while ($row = $result->fetch_row()) $rows[] = $row;
+    foreach ($rows as $rowIndex => $row) {
+        foreach (array_values($row) as $columnIndex => $value) {
+            $isAccessCount = $table === 'DeFlip_Access' && $rowIndex > 0 && $columnIndex === 3;
+            $sheet->setCellValueExplicitByColumnAndRow(
+                $columnIndex + 1, $rowIndex + 1, $isAccessCount ? (int) $value : (string) $value,
+                $isAccessCount ? \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC : \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+        }
+    }
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $table . '.xlsx"');
+    header('Cache-Control: private, no-store');
+    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($sheet->getParent()))->save('php://output');
+    exit;
+}
+
 $report = new AccessReport($_GET);
 if (isset($_GET['detailList'])) {
     require __DIR__ . '/dl_detail.php';

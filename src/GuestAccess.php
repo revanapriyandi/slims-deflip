@@ -64,4 +64,37 @@ final class GuestAccess
     {
         return $required && !\utility::isMemberLogin() && !self::hasIdentity();
     }
+
+    /**
+     * Access checks for p=fstream-pdf. Stock SLiMS sends a redirect header for denied
+     * members but keeps streaming the file, so stop here before it is loaded.
+     */
+    public static function guardPdfStream(int $fileId, int $biblioId): void
+    {
+        $statement = DB::getInstance()->prepare("SELECT att.access_limit FROM biblio_attachment AS att
+            WHERE att.file_id = ? AND att.biblio_id = ? AND att.access_type = 'public'");
+        $statement->execute([$fileId, $biblioId]);
+        $attachment = $statement->fetch(\PDO::FETCH_ASSOC);
+        if (!$attachment) return; // SLiMS answers "File Not Found" itself.
+
+        if (!empty($attachment['access_limit'])) {
+            if (!\utility::isMemberLogin()) {
+                header('Location: ' . SWB . 'index.php?p=member&destination=' . urlencode('index.php?p=fstream-pdf&fid=' . $fileId . '&bid=' . $biblioId));
+                exit;
+            }
+            $allowed = @unserialize($attachment['access_limit'], ['allowed_classes' => false]);
+            if (!is_array($allowed) || !in_array($_SESSION['m_member_type_id'] ?? null, $allowed)) {
+                header('Location: ' . SWB . 'index.php?p=error&errnum=601');
+                exit;
+            }
+        }
+
+        if (self::needsRegistration(Settings::get()['guestForm'])) {
+            http_response_code(403);
+            header('Cache-Control: no-store');
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo __('Complete the reader registration form before opening this document.');
+            exit;
+        }
+    }
 }
